@@ -1,0 +1,26 @@
+appId: com.mgw.streamingdesktop
+productName: MGW Video Dashboard
+copyright: Copyright © 2026
+
+win:
+  target: portable
+  icon: renderer/assets/icon.ico
+
+portable:
+  artifactName: MGW-Dashboard-${version}.exe
+
+files:
+  - "main/**/*"
+  - "renderer/**/*"
+  - "stream_status.json"
+  - "package.json"
+
+extraResources:
+  - from: "bin/"
+    to: "bin/"
+    filter:
+      - "**/*"
+
+directories:
+  output: dist
+  buildResources: renderer/assets
