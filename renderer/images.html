@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaMTX Dashboard - Live Record Previews</title>
+    <style>
+        :root {
+            --bg-main: #141a22;
+            --bg-card: #18202a;
+            --bg-darker: #0e1319;
+            --border-color: #242f3d;
+            --text-normal: #a5b5c7;
+            --text-bright: #ffffff;
+            --blue-btn: #1a73e8;
+            --cyan: #00bcd4;
+            --red-badge: #d32f2f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-bright);
+            padding: 15px;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top Menu Navigation Bar */
+        .top-navbar {
+            display: flex;
+            gap: 25px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .top-navbar a {
+            color: var(--text-normal);
+            text-decoration: none;
+            padding-bottom: 8px;
+            position: relative;
+        }
+
+        .top-navbar a.active {
+            color: var(--blue-btn);
+        }
+
+        .top-navbar a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--blue-btn);
+        }
+
+        /* Header Informasi Halaman */
+        .page-header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        .page-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .record-counter {
+            background-color: rgba(0, 188, 212, 0.15);
+            color: var(--cyan);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            border: 1px solid rgba(0, 188, 212, 0.3);
+        }
+
+        /* Container Grid Preview Rekaman Video */
+        .preview-gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            overflow-y: auto;
+            flex: 1;
+            padding-bottom: 15px;
+            align-content: start;
+        }
+
+        /* Card Item Rekaman */
+        .record-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .record-card:hover {
+            transform: translateY(-3px);
+            border-color: #455466;
+        }
+
+        /* Representasi Thumbnail Video */
+        .thumbnail-placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background-color: var(--bg-darker);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        /* Icon Play Besar di Tengah Thumbnail */
+        .play-overlay-icon {
+            width: 44px;
+            height: 44px;
+            background-color: rgba(26, 115, 232, 0.85);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .record-card:hover .play-overlay-icon {
+            transform: scale(1.1);
+            background-color: var(--blue-btn);
+        }
+
+        .resolution-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background-color: rgba(0, 188, 212, 0.2);
+            color: var(--cyan);
+            border: 1px solid var(--cyan);
+            padding: 1px 5px;
+            border-radius: 2px;
+            font-size: 10px;
+        }
+
+        /* Detail Informasi Metadata Berkas */
+        .record-details-box {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .record-file-name {
+            font-weight: bold;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-normal);
+            font-size: 12px;
+        }
+
+        .meta-row span {
+            color: #fff;
+        }
+
+        /* Tombol Aksi Tonton */
+        .btn-watch-preview {
+            background-color: #232d38;
+            border: 1px solid var(--border-color);
+            color: var(--text-bright);
+            padding: 8px;
+            text-align: center;
+            border-radius: 4px;
+            margin-top: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .record-card:hover .btn-watch-preview {
+            background-color: var(--blue-btn);
+            border-color: var(--blue-btn);
+        }
+
+        /* VIDEO PLAYER MODAL OVERLAY */
+        .video-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .video-modal-content {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            width: 90%;
+            max-width: 850px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header-bar {
+            background-color: var(--bg-darker);
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header-bar h3 {
+            font-size: 13px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80%;
+        }
+
+        .close-modal-btn {
+            background: none;
+            border: none;
+            color: var(--text-normal);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .close-modal-btn:hover {
+            color: var(--red-badge);
+        }
+
+        .video-viewport {
+            background-color: #000;
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+
+        .video-viewport video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .no-data-placeholder {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-normal);
+            font-size: 14px;
+            background-color: var(--bg-card);
+            border: 1px dashed var(--border-color);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="top-navbar">
+        <a href="index.php">Media</a>
+        <a href="upload.php">Upload</a>
+        <a href="Network.php">Network</a>
+        <a href="images.html" class="active">Play Preview</a>
+    </div>
+
+    <div class="page-header-info">
+        <div class="page-title">
+            📹 Live Stream Record Previews
+            <span class="record-counter" id="fileCountBadge">0 Files Saved</span>
+        </div>
+        <div style="font-size: 11px; color: var(--text-normal);">
+            Membaca file rekaman nyata yang sudah selesai disimpan (Max durasi per rekaman: 2 Jam).
+        </div>
+    </div>
+
+    <div class="preview-gallery-grid" id="galleryGrid">
+        <!-- Diisi secara dinamis melalui JavaScript -->
+    </div>
+
+    <div class="video-modal-overlay" id="watchModalOverlay">
+        <div class="video-modal-content">
+            <div class="modal-header-bar">
+                <h3 id="modalVideoLabel">Playback Preview Engine</h3>
+                <button class="close-modal-btn" onclick="closeWatchModal()">✕</button>
+            </div>
+            <div class="video-viewport">
+                <video id="modalVideoEngine" controls></video>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modalOverlay = document.getElementById('watchModalOverlay');
+        const videoEngine = document.getElementById('modalVideoEngine');
+        const videoLabel = document.getElementById('modalVideoLabel');
+        const galleryGrid = document.getElementById('galleryGrid');
+
+        function openWatchModal(url, filename) {
+            videoLabel.innerText = "Playing Record: " + filename;
+            videoEngine.src = url;
+            modalOverlay.style.display = 'flex';
+            videoEngine.play().catch(e => console.log("Autoplay blocked."));
+        }
+
+        function closeWatchModal() {
+            modalOverlay.style.display = 'none';
+            videoEngine.pause();
+            videoEngine.src = "";
+        }
+
+        modalOverlay.addEventListener('click', function (e) {
+            if (e.target === modalOverlay) closeWatchModal();
+        });
+
+        // SYNC ENGINE: Mengambil data records terbaru dari Express API secara dinamis
+        function checkNewRecordsRealtime() {
+            fetch('/api/records')
+                .then(response => response.json())
+                .then(records => {
+                    document.getElementById('fileCountBadge').innerText = `${records.length} Files Saved`;
+
+                    if (records.length === 0) {
+                        galleryGrid.innerHTML = `
+                            <div class="no-data-placeholder" id="emptyMsg">
+                                📭 Belum ada rekaman tersimpan. Pastikan Anda mengaktifkan tombol 'Streaming'.
+                            </div>
+                        `;
+                    } else {
+                        galleryGrid.innerHTML = records.map(record => `
+                            <div class="record-card">
+                                <div class="thumbnail-placeholder" onclick="openWatchModal('${record.url}', '${record.name}')">
+                                    <div class="resolution-badge">MP4 Video</div>
+                                    <div class="play-overlay-icon">▶</div>
+                                </div>
+                                <div class="record-details-box">
+                                    <div class="record-file-name" title="${record.name}">
+                                        ${record.name}
+                                    </div>
+                                    <div class="meta-row">
+                                        <label>Selesai Direkam:</label>
+                                        <span>${record.date}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <label>Ukuran Berkas:</label>
+                                        <span>${record.size}</span>
+                                    </div>
+                                    <div class="btn-watch-preview" onclick="openWatchModal('${record.url}', '${record.name}')">
+                                        Watch Record Preview
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }).catch(err => console.log("Error syncing gallery:", err));
+        }
+
+        // Jalankan sinkronisasi awal dan set interval polling 4 detik
+        document.addEventListener("DOMContentLoaded", () => {
+            checkNewRecordsRealtime();
+            setInterval(checkNewRecordsRealtime, 4000);
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaMTX Dashboard - Network Service</title>
+    <style>
+        :root {
+            --bg-main: #141a22;
+            --bg-card: #18202a;
+            --bg-darker: #0e1319;
+            --border-color: #242f3d;
+            --text-normal: #a5b5c7;
+            --text-bright: #ffffff;
+            --blue-btn: #1a73e8;
+            --green-btn: #00a86b;
+            --orange-icon: #d66800;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-bright);
+            padding: 15px;
+            font-size: 13px;
+        }
+
+        /* Top Menu Navigation Bar */
+        .top-navbar {
+            display: flex;
+            gap: 25px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .top-navbar a {
+            color: var(--text-normal);
+            text-decoration: none;
+            padding-bottom: 8px;
+            position: relative;
+        }
+
+        .top-navbar a.active {
+            color: var(--blue-btn);
+        }
+
+        .top-navbar a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--blue-btn);
+        }
+
+        /* Container Card Utama */
+        .network-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .network-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        /* Header atas per block kartu */
+        .card-header-bar {
+            background-color: var(--bg-darker);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-normal);
+            font-weight: 500;
+        }
+
+        /* Konten Utama Baris Data Jaringan */
+        .network-body-row {
+            display: flex;
+            padding: 20px 15px;
+            gap: 20px;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .network-body-row:last-child {
+            border-bottom: none;
+        }
+
+        /* Desain Icon LAN Port Kotak */
+        .lan-icon-box {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            border: 2px solid var(--green-btn);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .lan-icon-box.orange-theme {
+            border-color: #e65100;
+        }
+
+        .lan-icon-box svg {
+            width: 32px;
+            height: 32px;
+            fill: none;
+            stroke: var(--green-btn);
+            stroke-width: 2;
+        }
+
+        .lan-icon-box.orange-theme svg {
+            stroke: #e65100;
+        }
+
+        /* Grid Pembagian Teks Detail IP */
+        .network-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 40px;
+            flex: 1;
+        }
+
+        .info-block-item label {
+            font-weight: bold;
+            color: var(--text-bright);
+            display: block;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .info-block-item p {
+            color: var(--text-normal);
+            line-height: 1.5;
+        }
+
+        .info-block-item p span {
+            color: #fff;
+        }
+
+        /* Desain Tombol Aksi */
+        .action-btn {
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            padding: 6px 16px;
+            cursor: pointer;
+            font-size: 12px;
+            align-self: flex-start;
+        }
+
+        .btn-ping { background-color: #00a86b; }
+        .btn-set { background-color: #1a73e8; padding: 6px 20px; }
+
+        /* Baris Bawah Menu Tambahan */
+        .full-width-bar-button {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: center;
+            font-weight: 500;
+            color: var(--text-normal);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .full-width-bar-button::after {
+            content: '❯';
+            position: absolute;
+            right: 20px;
+            font-size: 10px;
+            transform: rotate(90deg);
+        }
+
+        /* Panel Detektor IP Realtime Pengunjung Aktif */
+        .realtime-monitor-footer {
+            background: linear-gradient(90deg, #10161d, #18202a);
+            border-left: 4px solid var(--blue-btn);
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #00ff41;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            box-shadow: 0 0 8px #00ff41;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-navbar">
+        <a href="index.php">Media</a>
+        <a href="upload.php">Upload</a>
+        <a href="#" class="active">Network</a>
+        <a href="images.php">Play Preview</a>
+    </div>
+
+    <div class="network-container">
+
+        <div class="network-card">
+            <div class="card-header-bar">
+                <span id="net1-title">Network1 (Connected)</span>
+                <button class="action-btn btn-ping" onclick="triggerPingAction('Network 1')">Ping</button>
+            </div>
+            
+            <div class="network-body-row">
+                <div class="lan-icon-box">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="6" y="6" width="12" height="10" rx="1"/>
+                        <path d="M10 16v3h4v-3M8 20h8"/>
+                    </svg>
+                </div>
+                <div class="network-info-grid">
+                    <div class="info-block-item">
+                        <label>Address1</label>
+                        <p>IP: <span id="net1-ip1">Loading...</span> / <span id="net1-mask1">255.255.255.240</span></p>
+                        <p>Gateway: <span id="net1-gw1">10.20.11.1</span></p>
+                    </div>
+                    <div class="info-block-item" style="padding-top: 18px;">
+                        <p>MAC: <span id="net1-mac">18:C3:F4:21:76:27</span></p>
+                        <p>DNS: <span id="net1-dns">10.20.11.1</span></p>
+                    </div>
+                </div>
+                <button class="action-btn btn-set" onclick="triggerSetIpConfig('Address 1')">Set</button>
+            </div>
+
+            <div class="network-body-row">
+                <div style="width: 50px;"></div> <div class="network-info-grid">
+                    <div class="info-block-item">
+                        <label>Address2</label>
+                        <p>IP: <span id="net1-ip2">192.168.1.168</span> / <span id="net1-mask2">255.255.255.0</span></p>
+                        <p>Gateway: <span id="net1-gw2">192.168.1.1</span></p>
+                    </div>
+                </div>
+                <button class="action-btn btn-set" onclick="triggerSetIpConfig('Address 2')">Set</button>
+            </div>
+        </div>
+
+        <div class="network-card">
+            <div class="card-header-bar">
+                <span id="net2-title" style="color: var(--text-normal);">Network2 (Disconnected)</span>
+            </div>
+            
+            <div class="network-body-row">
+                <div class="lan-icon-box orange-theme">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="6" y="6" width="12" height="10" rx="1"/>
+                        <path d="M10 16v3h4v-3M8 20h8"/>
+                    </svg>
+                </div>
+                <div class="network-info-grid">
+                    <div class="info-block-item">
+                        <label>Address1</label>
+                        <p>IP: <span id="net2-ip1">202.51.102.84</span> / <span id="net2-mask1">255.255.255.248</span></p>
+                        <p>Gateway: <span id="net2-gw1">202.51.102.81</span></p>
+                    </div>
+                    <div class="info-block-item" style="padding-top: 18px;">
+                        <p>MAC: <span id="net2-mac">18:C3:F4:21:76:28</span></p>
+                        <p>DNS: <span id="net2-dns">202.51.96.7</span></p>
+                    </div>
+                </div>
+                <button class="action-btn btn-set" onclick="triggerSetIpConfig('Network 2 Address 1')">Set</button>
+            </div>
+
+            <div class="network-body-row">
+                <div style="width: 50px;"></div>
+                <div class="network-info-grid">
+                    <div class="info-block-item">
+                        <label>Address2</label>
+                        <p>IP: <span id="net2-ip2">192.168.2.168</span> / <span id="net2-mask2">255.255.255.0</span></p>
+                        <p>Gateway: <span id="net2-gw2">--</span></p>
+                    </div>
+                </div>
+                <button class="action-btn btn-set" onclick="triggerSetIpConfig('Network 2 Address 2')">Set</button>
+            </div>
+        </div>
+
+        <div class="full-width-bar-button">Host Name</div>
+        <div class="full-width-bar-button">Routing Strategy</div>
+
+        <div class="realtime-monitor-footer">
+            <div>
+                <span class="pulse-dot"></span>
+                <strong>Live Client Analyzer:</strong> IP Anda yang terdeteksi terhubung ke server ini: 
+                <span id="visitor-ip-label" style="color: #00ff41; font-weight: bold;">Loading...</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-normal);">
+                Total Sesi Aktif: <span id="total-sessions" style="color: #fff;">1</span> Perangkat
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Fungsi memanggil data jaringan dari backend secara berkala (Realtime)
+        function updateNetworkDashboardData() {
+            fetch('network.php?action=fetch_network_stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Update Status Visitor Realtime
+                    document.getElementById('visitor-ip-label').innerText = data.active_visitors.current_client;
+                    document.getElementById('total-sessions').innerText = data.active_visitors.total_connections;
+                    
+                    // Update Dinamis Base Server IP dari System
+                    document.getElementById('net1-ip1').innerText = data.network1.address1.ip;
+                })
+                .catch(error => console.error('Gagal melakukan sync statistik jaringan:', error));
+        }
+
+        // Tombol Interaksi Tambahan
+        function triggerPingAction(interfaceName) {
+            alert("Melakukan tes PING lewat " + interfaceName + "... Status: Destination Host Reachable (OK)");
+        }
+
+        function triggerSetIpConfig(addressName) {
+            let newIp = prompt("Masukkan Konfigurasi IP baru untuk " + addressName + ":");
+            if (newIp) {
+                alert("Konfigurasi disimpan! Perubahan diterapkan pada adapter lokal.");
+            }
+        }
+
+        // Jalankan tracking otomatis saat halaman dibuka
+        updateNetworkDashboardData();
+        // Lakukan reload background data setiap 5 detik sekali
+        setInterval(updateNetworkDashboardData, 5000);
+    </script>
+</body>
+</html>

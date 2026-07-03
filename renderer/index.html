@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Decoder Dashboard - MediaMTX Integrated</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <style>
+        :root {
+            --bg-main: #141a22;
+            --bg-card: #18202a;
+            --bg-darker: #0e1319;
+            --border-color: #242f3d;
+            --text-normal: #a5b5c7;
+            --text-bright: #ffffff;
+            --cyan: #00bcd4;
+            --green-active: #26a69a;
+            --green-bulb: #00ff41;
+            --blue-btn: #1a73e8;
+            --red-badge: #d32f2f;
+            --orange-alert: #ff9800;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-bright);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top Bar Menu Tabs */
+        .top-navbar {
+            display: flex;
+            gap: 25px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .top-navbar a {
+            color: var(--text-normal);
+            text-decoration: none;
+            padding-bottom: 8px;
+            position: relative;
+        }
+
+        .top-navbar a.active {
+            color: var(--blue-btn);
+        }
+
+        .top-navbar a.active::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--blue-btn);
+        }
+
+        /* Video Workspace Windows */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .decoder-box {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 2px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .box-header {
+            background-color: var(--bg-darker);
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 2px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-source {
+            background-color: rgba(211, 47, 47, 0.2);
+            color: #ff5252;
+            border: 1px solid #ff5252;
+        }
+
+        .badge-output {
+            background-color: rgba(0, 188, 212, 0.2);
+            color: var(--cyan);
+            border: 1px solid var(--cyan);
+        }
+
+        /* Hardware Bulbs */
+        .hardware-leds {
+            display: flex;
+            gap: 12px;
+        }
+
+        .led-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-normal);
+        }
+
+        .led-bulb {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #37474f;
+        }
+
+        .led-bulb.glow-green {
+            background-color: var(--green-bulb);
+            box-shadow: 0 0 6px var(--green-bulb);
+        }
+
+        /* Toggle Switches */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-normal);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 30px;
+            height: 14px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #455a64;
+            border-radius: 14px;
+            transition: 0.2s;
+        }
+
+        .toggle-slider::before {
+            position: absolute;
+            content: "";
+            height: 10px;
+            width: 10px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+
+        input:checked+.toggle-slider {
+            background-color: var(--blue-btn);
+        }
+
+        input:checked+.toggle-slider::before {
+            transform: translateX(16px);
+        }
+
+        /* Monitor View Screen */
+        .screen-body {
+            flex: 1;
+            background-color: #000000;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .video-render {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background-color: #000;
+        }
+
+        /* OSD Meta Text Overlay */
+        .osd-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 11px;
+            color: var(--text-normal);
+            line-height: 1.4;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 6px;
+            border-radius: 2px;
+            z-index: 5;
+        }
+
+        .osd-overlay span {
+            color: var(--cyan);
+        }
+
+        .osd-overlay .white-txt {
+            color: #fff;
+        }
+
+        /* Buffering Loading Indicator */
+        .buffering-spinner {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(26, 115, 232, 0.1);
+            border-top-color: var(--blue-btn);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 2;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .screen-title-center {
+            position: absolute;
+            bottom: 12px;
+            width: 100%;
+            text-align: center;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.9);
+            z-index: 4;
+        }
+
+        /* Sub-control bar beneath screens */
+        .sub-control-bar {
+            background-color: var(--bg-darker);
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sub-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-bright);
+            padding: 4px 8px;
+            border-radius: 2px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .sub-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Bottom Section Control & Streams Deck */
+        .control-panel-bottom {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .button-action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .group-left {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-ui {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 2px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-ui-grey {
+            background-color: #2d3846;
+            border: 1px solid #455466;
+        }
+
+        .btn-ui-grey.active-tab {
+            background-color: var(--bg-main);
+            border-color: #fff;
+        }
+
+        .btn-ui-green {
+            background-color: #00897b;
+        }
+
+        .btn-ui-blue {
+            background-color: #1e88e5;
+        }
+
+        /* Legend Indicators Status */
+        .legend-container {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--text-normal);
+        }
+
+        .dot-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 3px;
+        }
+
+        /* Source Deck Grid */
+        .source-deck-wrapper {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            min-height: 80px;
+        }
+
+        .deck-card {
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            border-radius: 2px;
+            min-width: 190px;
+            max-width: 220px;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .deck-card.active-route {
+            border-color: var(--orange-alert);
+            box-shadow: 0 0 5px rgba(255, 152, 0, 0.3);
+        }
+
+        .deck-card-icon {
+            background-color: #232c37;
+            padding: 8px;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .deck-card.active-route .deck-card-icon {
+            background-color: #bf360c;
+        }
+
+        .deck-card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            font-size: 12px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .deck-card-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #fff;
+        }
+
+        .deck-card-sub {
+            color: var(--text-normal);
+            font-size: 11px;
+        }
+
+        .deck-card-proto {
+            font-size: 10px;
+            background-color: #1f2a36;
+            width: fit-content;
+            padding: 0px 4px;
+            border-radius: 2px;
+            color: var(--text-normal);
+            margin-top: 3px;
+        }
+
+        /* Trash Icon Delete Button */
+        .action-delete-btn {
+            background: none;
+            border: none;
+            color: #ff5252;
+            cursor: pointer;
+            font-size: 13px;
+            position: absolute;
+            right: 6px;
+            top: 6px;
+            display: none;
+        }
+
+        .deck-card:hover .action-delete-btn {
+            display: block;
+        }
+
+        /* Modal Popup Form Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .modal-body {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 18px;
+            border-radius: 4px;
+            width: 330px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal-body h3 {
+            font-size: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+            color: #fff;
+        }
+
+        .input-box-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-normal);
+        }
+
+        .input-box-group input,
+        .input-box-group select {
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            padding: 6px;
+            border-radius: 2px;
+            color: #fff;
+            outline: none;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        /* Streaming Recorder Styles */
+        .preview-action-overlay {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 99;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-stream-recorder {
+            background-color: #ff1744;
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-stream-recorder:hover {
+            background-color: #b71c1c;
+        }
+
+        .btn-stream-recorder.active-recording {
+            background-color: #00e676 !important;
+            color: #000000 !important;
+            animation: streamingPulse 1s infinite alternate;
+        }
+
+        @keyframes streamingPulse {
+            0% {
+                box-shadow: 0 0 4px #00e676;
+            }
+
+            100% {
+                box-shadow: 0 0 15px #00e676;
+            }
+        }
+
+        .stream-counter-badge {
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff41;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid #333;
+            display: none;
+        }
+
+        /* Recordings List in Source Deck */
+        .recordings-section-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--text-normal);
+            margin-top: 15px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="top-navbar">
+        <a href="index.php" class="active">Media</a>
+        <a href="upload.php">Upload</a>
+        <a href="Network.php">Network</a>
+        <a href="images.php">Play Preview</a>
+    </div>
+
+    <div class="workspace-grid">
+
+        <div class="decoder-box" id="box-preview-left">
+            <div class="box-header">
+                <div class="header-section">
+                    <span class="badge badge-source">✖ Source Preview</span>
+                    <div class="toggle-wrap">
+                        <span>Image</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span style="color:#fff;">Video</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="screen-body" style="background-color: #000; position: relative; overflow: hidden;">
+                <div class="preview-action-overlay">
+                    <div class="stream-counter-badge" id="streamTimerCounter">00:00:00</div>
+                    <button class="btn-stream-recorder" id="streamRecordActionBtn"
+                        onclick="triggerStreamingEngineControl()">
+                        <span
+                            style="display:inline-block; width:10px; height:10px; background:currentColor; border-radius:50%;"></span>
+                        <span id="streamBtnLabelText">Start Stream</span>
+                    </button>
+                </div>
+
+                <div class="osd-overlay" id="osd-left">
+                    [<span id="osd-proto">RTMP</span>]<br>
+                    URL:<span class="white-txt" id="osd-url">Loading...</span><br>
+                    Video Codec: <span class="white-txt">H.264 / AVC</span><br>
+                    Resolution:<span id="osd-res">480x640 @ 20Hz</span><br>
+                    Srt Mode:<span>caller</span><br>
+                    Live Status:<span style="color: var(--green-bulb);" id="osd-status">Connected</span><br>
+                    Recv Total:<span class="white-txt">Dynamic Load</span><br>
+                    Used Band Width:<span>1.2 Mbps</span>
+                </div>
+
+                <div class="buffering-spinner" id="loader-left"></div>
+
+                <video id="live-video" autoplay muted playsinline
+                    style="width: 100%; height: 100%; object-fit: contain;"></video>
+                <div class="live-badge" style="position: absolute; top: 15px; left: 15px; z-index: 10;">
+                    <span class="live-dot"></span> LIVE
+                </div>
+
+                <div class="screen-title-center" id="footer-title-left">KiloViewP1-SRT</div>
+            </div>
+
+            <div class="sub-control-bar">
+                <button class="sub-btn">👁</button>
+                <div style="display:flex; gap:3px;">
+                    <button class="sub-btn" style="padding:2px 5px;">⬜</button>
+                    <button class="sub-btn" style="padding:2px 5px;">⌗</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="decoder-box">
+            <div class="box-header">
+                <div class="header-section">
+                    <span class="badge badge-output">➔ Output 1</span>
+                    <span style="color: var(--text-normal); font-size: 11px;">1920x1080i</span>
+                </div>
+                <div class="header-section">
+                    <div class="hardware-leds">
+                        <div class="led-item"><span class="led-bulb glow-green"></span> HDMI1</div>
+                        <div class="led-item"><span class="led-bulb"></span> HDMI2</div>
+                        <div class="led-item"><span class="led-bulb glow-green"></span> SDI</div>
+                        <div class="led-item"><span class="led-bulb"></span> IP</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="screen-body">
+                <div class="osd-overlay">[<span>OUTPUT-LINK</span>]</div>
+                <div class="buffering-spinner" id="loader-right"></div>
+
+                <video id="player-video-right" class="video-render" autoplay muted playsinline></video>
+
+                <div class="screen-title-center" id="footer-title-right">KiloViewP1-SRT</div>
+            </div>
+
+            <div class="sub-control-bar">
+                <div style="display:flex; gap:6px;">
+                    <button class="sub-btn">🔊</button>
+                    <button class="sub-btn">☰</button>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <button class="sub-btn">🖼️ Logo</button>
+                    <div class="toggle-wrap">
+                        <button class="sub-btn">👁️ Border</button>
+                        <span style="color:#fff;">Embedded</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span>Analog</span>
+                    </div>
+                    <button class="sub-btn">🎛️</button>
+                    <button class="sub-btn" style="border-color:var(--red-badge)">⬜</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="control-panel-bottom">
+        <div class="button-action-row">
+            <div class="group-left">
+                <button class="btn-ui btn-ui-grey active-tab">Source</button>
+                <button class="btn-ui btn-ui-grey" id="btn-modal-trigger">+ Add</button>
+                <button class="btn-ui btn-ui-green">🌢 Discover</button>
+                <button class="btn-ui btn-ui-green">🎙️ Voice Intercom</button>
+            </div>
+
+            <div class="legend-container">
+                <div><span class="dot-indicator" style="background-color:var(--text-normal);"></span> Offline</div>
+                <div><span class="dot-indicator" style="background-color:var(--green-bulb);"></span> Display/Service</div>
+                <div><span class="dot-indicator" style="background-color:var(--blue-btn);"></span> Connecting</div>
+                <div><span class="dot-indicator" style="background-color:var(--orange-alert);"></span> Reconnecting</div>
+                <div><span class="dot-indicator" style="background-color:var(--red-badge);"></span> Error</div>
+            </div>
+
+            <div>
+                <button class="btn-ui btn-ui-blue">🎚️ Mix Control</button>
+            </div>
+        </div>
+
+        <div class="source-deck-wrapper" id="mainSourceDeck">
+            <!-- Diisi secara dinamis melalui JavaScript -->
+        </div>
+
+        <div id="recentRecordingsContainer">
+            <!-- Diisi secara dinamis melalui JavaScript -->
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addSourceModal">
+        <div class="modal-body">
+            <h3>Add New Stream Source</h3>
+            <div class="input-box-group">
+                <label>Source Name</label>
+                <input type="text" id="modalInputName" placeholder="Contoh: Kamera-HP-RTMP">
+            </div>
+            <div class="input-box-group">
+                <label>IP Address / URL Port</label>
+                <input type="text" id="modalInputAddress" placeholder="Contoh: 10.5.30.12:1935">
+            </div>
+            <div class="input-box-group">
+                <label>Protocol Type</label>
+                <select id="modalInputProto">
+                    <option value="RTMP">RTMP (MediaMTX)</option>
+                    <option value="SRT">SRT (Listener)</option>
+                    <option value="RTSP">RTSP</option>
+                </select>
+            </div>
+            <div class="input-box-group" id="hls-url-container">
+                <label>HLS Stream M3U8 URL (Khusus MediaMTX Web Playback)</label>
+                <input type="text" id="modalInputHlsUrl" value="">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-ui btn-ui-grey" id="btn-modal-close">Cancel</button>
+                <button class="btn-ui btn-ui-blue" id="btn-modal-save">Add Source</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const modalElement = document.getElementById('addSourceModal');
+        const triggerModalBtn = document.getElementById('btn-modal-trigger');
+        const closeModalBtn = document.getElementById('btn-modal-close');
+        const saveSourceBtn = document.getElementById('btn-modal-save');
+        const deckContainer = document.getElementById('mainSourceDeck');
+
+        const videoPlayerLeft = document.getElementById('live-video');
+        const videoPlayerRight = document.getElementById('player-video-right');
+        const loaderLeft = document.getElementById('loader-left');
+
+        let hlsInstanceLeft = null;
+        let hlsInstanceRight = null;
+
+        let isStreamingActive = false;
+        let recordingSeconds = 0;
+        let streamTimerInterval = null;
+
+        const actionBtn = document.getElementById('streamRecordActionBtn');
+        const btnLabel = document.getElementById('streamBtnLabelText');
+        const counterBadge = document.getElementById('streamTimerCounter');
+
+        // --- LOAD INITIAL DATA FROM API ---
+        document.addEventListener("DOMContentLoaded", () => {
+            fetch('/api/init')
+                .then(res => res.json())
+                .then(data => {
+                    const serverIP = data.serverIP;
+                    document.getElementById('osd-url').innerText = `http://${serverIP}:8888/mystream/mystream/index.m3u8`;
+                    document.getElementById('modalInputAddress').placeholder = `Contoh: ${serverIP}:1935`;
+                    document.getElementById('modalInputHlsUrl').value = `http://${serverIP}:8888/mystream/mystream/index.m3u8`;
+
+                    // Populate Sources
+                    deckContainer.innerHTML = '';
+                    data.defaultSources.forEach(src => {
+                        const card = document.createElement('div');
+                        card.className = `deck-card ${src.isActive ? 'active-route' : ''}`;
+                        card.setAttribute('data-id', src.id);
+                        card.setAttribute('data-url', src.streamUrl);
+                        card.setAttribute('data-proto', src.protocol);
+                        card.setAttribute('onclick', 'routeStreamToPlayer(this)');
+                        card.innerHTML = `
+                            <div class="deck-card-icon">📹</div>
+                            <div class="deck-card-info">
+                                <div class="deck-card-title">${src.name}</div>
+                                <div class="deck-card-sub">${src.address}</div>
+                                <div class="deck-card-proto">${src.protocol}</div>
+                            </div>
+                            <button class="action-delete-btn" onclick="removeSourceCard(event, this)">✕</button>
+                        `;
+                        deckContainer.appendChild(card);
+                    });
+
+                    // Populate Recordings
+                    const recordingsContainer = document.getElementById('recentRecordingsContainer');
+                    if (data.recordings && data.recordings.length > 0) {
+                        recordingsContainer.innerHTML = `
+                            <div class="recordings-section-title">
+                                <span>RECENT RECORDINGS</span>
+                                <a href="images.php" style="color: var(--blue-btn); text-decoration: none; font-size: 10px;">View All</a>
+                            </div>
+                            <div class="source-deck-wrapper" id="recordingsDeck"></div>
+                        `;
+                        const recordingsDeck = document.getElementById('recordingsDeck');
+                        data.recordings.forEach(rec => {
+                            const card = document.createElement('div');
+                            card.className = 'deck-card';
+                            card.onclick = () => window.location.href = 'images.php';
+                            card.innerHTML = `
+                                <div class="deck-card-icon" style="background-color: #ff1744;">🎬</div>
+                                <div class="deck-card-info">
+                                    <div class="deck-card-title">${rec.name}</div>
+                                    <div class="deck-card-sub">${rec.size} | ${rec.duration}</div>
+                                    <div class="deck-card-proto">MP4</div>
+                                </div>
+                            `;
+                            recordingsDeck.appendChild(card);
+                        });
+                    }
+
+                    // Sync Stream State
+                    isStreamingActive = data.isStreamingActive;
+                    recordingSeconds = data.initialElapsed;
+                    if (isStreamingActive) {
+                        btnLabel.innerText = "Stop Stream";
+                        actionBtn.classList.add('active-recording');
+                        counterBadge.style.display = "block";
+                        counterBadge.innerText = formatTimerString(recordingSeconds);
+                        runLiveCounterEngine();
+                    }
+
+                    // Start default active stream playback
+                    const initialActiveCard = document.querySelector('.deck-card.active-route');
+                    if (initialActiveCard) {
+                        routeStreamToPlayer(initialActiveCard);
+                    }
+                });
+        });
+
+        // --- CORE LOGIC 1: DETEKSI & PUTAR STREAM REAL-TIME ---
+        function runHlsStreamEngine(url) {
+            if (hlsInstanceLeft) { hlsInstanceLeft.destroy(); }
+            if (hlsInstanceRight) { hlsInstanceRight.destroy(); }
+
+            if (!url) {
+                videoPlayerLeft.src = "";
+                videoPlayerRight.src = "";
+                document.getElementById('osd-status').innerText = "Disconnected";
+                document.getElementById('osd-status').style.color = "#ff1744";
+                document.getElementById('osd-res').innerText = "0x0@0.00Hz";
+                return;
+            }
+
+            loaderLeft.style.display = 'block';
+            document.getElementById('osd-status').innerText = "Connecting...";
+            document.getElementById('osd-status').style.color = "var(--blue-btn)";
+
+            if (Hls.isSupported()) {
+                hlsInstanceLeft = new Hls({
+                    liveDurationInfinity: true,
+                    manifestLoadingMaxRetry: 20,
+                    manifestLoadingRetryDelay: 1000,
+                    enableWorker: true
+                });
+                hlsInstanceRight = new Hls();
+
+                hlsInstanceLeft.loadSource(url);
+                hlsInstanceRight.loadSource(url);
+
+                hlsInstanceLeft.attachMedia(videoPlayerLeft);
+                hlsInstanceRight.attachMedia(videoPlayerRight);
+
+                hlsInstanceLeft.on(Hls.Events.MANIFEST_PARSED, function () {
+                    loaderLeft.style.display = 'none';
+                    document.getElementById('osd-status').innerText = "Connected";
+                    document.getElementById('osd-status').style.color = "var(--green-bulb)";
+                    document.getElementById('osd-res').innerText = "480x640 @ 20Hz";
+                    videoPlayerLeft.play().catch(err => console.log("Autoplay blocked."));
+                });
+
+                hlsInstanceRight.on(Hls.Events.MANIFEST_PARSED, function () {
+                    videoPlayerRight.play().catch(err => { });
+                });
+
+                hlsInstanceLeft.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        loaderLeft.style.display = 'none';
+                        document.getElementById('osd-status').innerText = "Offline/Error";
+                        document.getElementById('osd-status').style.color = "var(--red-badge)";
+                        
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                hlsInstanceLeft.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hlsInstanceLeft.recoverMediaError();
+                                break;
+                        }
+                    }
+                });
+
+            } else if (videoPlayerLeft.canPlayType('application/vnd.apple.mpegurl')) {
+                videoPlayerLeft.src = url;
+                videoPlayerRight.src = url;
+                videoPlayerLeft.addEventListener('loadedmetadata', function () {
+                    loaderLeft.style.display = 'none';
+                    videoPlayerLeft.play();
+                    videoPlayerRight.play();
+                });
+            }
+        }
+
+        // --- CORE LOGIC 2: ROUTING KLIK KARTU SOURCING ---
+        function routeStreamToPlayer(cardElement) {
+            document.querySelectorAll('.deck-card').forEach(card => {
+                card.classList.remove('active-route');
+            });
+
+            cardElement.classList.add('active-route');
+
+            const streamUrl = cardElement.getAttribute('data-url');
+            const streamProto = cardElement.getAttribute('data-proto');
+            const streamTitle = cardElement.querySelector('.deck-card-title').innerText;
+            const cardAddress = cardElement.querySelector('.deck-card-sub').innerText;
+
+            document.getElementById('footer-title-left').innerText = streamTitle;
+            document.getElementById('footer-title-right').innerText = streamTitle;
+
+            document.getElementById('osd-proto').innerText = streamProto;
+            document.getElementById('osd-url').innerText = streamUrl ? streamUrl : "srt://" + cardAddress;
+
+            runHlsStreamEngine(streamUrl);
+        }
+
+        // --- CORE LOGIC 3: INTERAKSI CRUD (ADD SOURCE) ---
+        triggerModalBtn.onclick = () => { modalElement.style.display = 'flex'; }
+        closeModalBtn.onclick = () => { clearAndCloseModal(); }
+
+        saveSourceBtn.onclick = () => {
+            const name = document.getElementById('modalInputName').value.trim();
+            const address = document.getElementById('modalInputAddress').value.trim();
+            const proto = document.getElementById('modalInputProto').value;
+            const hlsUrl = document.getElementById('modalInputHlsUrl').value.trim();
+
+            if (!name || !address) {
+                alert("Harap lengkapi isi form data input dashboard!");
+                return;
+            }
+
+            const uniqueId = 'src_' + Date.now();
+
+            const cardHtml = document.createElement('div');
+            cardHtml.className = 'deck-card';
+            cardHtml.setAttribute('data-id', uniqueId);
+            cardHtml.setAttribute('data-url', proto === 'RTMP' ? hlsUrl : '');
+            cardHtml.setAttribute('data-proto', proto);
+            cardHtml.setAttribute('onclick', 'routeStreamToPlayer(this)');
+
+            cardHtml.innerHTML = `
+                <div class="deck-card-icon">📹</div>
+                <div class="deck-card-info">
+                    <div class="deck-card-title">${name}</div>
+                    <div class="deck-card-sub">${address}</div>
+                    <div class="deck-card-proto">${proto}</div>
+                </div>
+                <button class="action-delete-btn" onclick="removeSourceCard(event, this)">✕</button>
+            `;
+
+            deckContainer.appendChild(cardHtml);
+            clearAndCloseModal();
+        };
+
+        function clearAndCloseModal() {
+            modalElement.style.display = 'none';
+            document.getElementById('modalInputName').value = '';
+            document.getElementById('modalInputAddress').value = '';
+        }
+
+        // --- CORE LOGIC 4: INTERAKSI CRUD (DELETE SOURCE) ---
+        function removeSourceCard(event, buttonElement) {
+            event.stopPropagation();
+            if (confirm("Hapus source stream ini dari daftar perangkat?")) {
+                const targetedCard = buttonElement.parentElement;
+                if (targetedCard.classList.contains('active-route')) {
+                    runHlsStreamEngine('');
+                }
+                targetedCard.remove();
+            }
+        }
+
+        window.onclick = (e) => { if (e.target == modalElement) clearAndCloseModal(); }
+
+        // =========================================================================
+        // STREAM RECORDING ENGINE LOGIC
+        // =========================================================================
+        function formatTimerString(seconds) {
+            let h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+            let m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            let s = (seconds % 60).toString().padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        function runLiveCounterEngine() {
+            if (streamTimerInterval) clearInterval(streamTimerInterval);
+            streamTimerInterval = setInterval(() => {
+                recordingSeconds++;
+                counterBadge.innerText = formatTimerString(recordingSeconds);
+            }, 1000);
+        }
+
+        function triggerStreamingEngineControl() {
+            fetch('index.php?action=toggle_stream')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.is_streaming) {
+                        isStreamingActive = true;
+                        recordingSeconds = 0;
+                        btnLabel.innerText = "Stop Stream";
+                        actionBtn.classList.add('active-recording');
+                        counterBadge.style.display = "block";
+                        counterBadge.innerText = "00:00:00";
+                        runLiveCounterEngine();
+                    } else {
+                        isStreamingActive = false;
+                        clearInterval(streamTimerInterval);
+                        alert("Perekaman dihentikan! Hasil rekaman baru telah berhasil disimpan ke daftar Recent Recordings.");
+                        window.location.reload();
+                    }
+                }).catch(err => console.error("Koneksi engine toggle bermasalah:", err));
+        }
+
+        function stopLiveCounterEngine() {
+            isStreamingActive = false;
+            clearInterval(streamTimerInterval);
+            btnLabel.innerText = "Start Stream";
+            actionBtn.classList.remove('active-recording');
+            counterBadge.style.display = "none";
+        }
+
+        function syncBackgroundStatusChecker() {
+            fetch('index.php?action=check_status')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.is_streaming && isStreamingActive) {
+                        stopLiveCounterEngine();
+                        window.location.reload();
+                    }
+                }).catch(err => console.error("Sinkronisasi status background gagal:", err));
+        }
+
+        // Jalankan sinkronisasi background setiap 5 detik
+        setInterval(syncBackgroundStatusChecker, 5000);
+    </script>
+</body>
+
+</html>
